@@ -2,42 +2,19 @@ package main
 
 import (
 	"fmt"
+	"io/fs"
+	"slices"
+	"strings"
 
-	"math"
 	"os"
 	"path/filepath"
-	"slices"
-
-	"golang.org/x/exp/maps"
 )
 
 /*
-   Arguments:
-       retro-sort ([source] ([dest])) (--move)
-
-       [source] is a glob that matches files you wish to sort
-       [dest] is an optional directory to place the sorted files into
-       --move means that files will be moved rather than copied
-
-       retro-sort will scan the files in [source]
-       (or all files in the current directory if [source] is not supplied)
-       new folders will then be created with a maximum of 100 files in each
-       The short unique sequence of letters of the first file within it
-       will be the folder name.
-
-       For example:
-           A/
-               Aardvark
-               ... 98 other files
-               Azerty
-           Azt/
-               Aztec
-               ... 98 other files
-               Camel
-           Cat/
-               Cat
-               ... 98 other files
-               Zebra
+TODO:
+* Argument for source and dest
+* Argument for max size
+* Argument for glob
 */
 
 func usage() {
@@ -45,114 +22,131 @@ func usage() {
 	os.Exit(1)
 }
 
+var size = 100
+
 func main() {
-	var src, dst string
-	move := false
-
-	args := os.Args[1:]
-
-	for _, arg := range args {
-		if arg == "--move" {
-			move = true
-		} else {
-			if src == "" {
-				src = arg
-			} else if dst == "" {
-				dst = arg
-			} else {
-				usage()
-			}
-		}
+	if len(os.Args) != 2 {
+		panic("You must supply a source directory")
 	}
 
-	if src == "" {
-		src = "./*"
-	}
+	src := os.Args[1]
 
-	if dst == "" {
-		dst = "./"
-	}
-
-	fmt.Printf("%s %s %s --move %v\n", os.Args[0], src, dst, move)
-
-	ms, err := filepath.Glob(src)
+	files, err := findFiles(src)
 	if err != nil {
 		panic(err)
 	}
 
-	// Make groups, bro
-	groups := makeGroups(ms)
+	slices.SortStableFunc(files, func(a, b string) int {
+		a = filepath.Base(a)
+		b = filepath.Base(b)
 
-	for group, fs := range groups {
-		dstDir := filepath.Join(dst, group)
+		return strings.Compare(a, b)
+	})
+
+	prefixSize := findMinPrefix(files)
+
+	// Make groups, bro
+	groups := makeGroups(files, prefixSize)
+
+	for _, group := range groups {
+		dstDir := filepath.Join("./dst", groupName(group, prefixSize))
 		os.MkdirAll(dstDir, 0750)
-		for _, srcFile := range fs {
-			dstFile := filepath.Join(dstDir, filepath.Base(srcFile))
-			os.Link(srcFile, dstFile)
+		for _, fn := range group {
+			dstFile := filepath.Join(dstDir, filepath.Base(fn))
+			fmt.Println(dstFile)
+			os.Link(fn, dstFile)
 		}
 	}
 
 	fmt.Println("done")
 }
 
-func makeGroups(in []string) map[string][]string {
-	slices.Sort(in)
+func findFiles(dir string) ([]string, error) {
+	files := make([]string, 0)
 
-	groups := make(map[string][]string)
-	last := ""
+	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if !d.IsDir() {
+			files = append(files, path)
+		}
 
-	name := findPrefix(last, filepath.Base(in[0]))
-	groups[name] = make([]string, 0)
+		return err
+	})
 
-	for _, m := range in {
-		groups[name] = append(groups[name], m)
+	return files, err
+}
 
-		// TODO: Make this more clever
-		if len(groups[name]) > 95 {
-			newName := findPrefix(last, filepath.Base(m))
+func findMinPrefix(in []string) int {
+	for prefixSize := 1; ; prefixSize++ {
+		if tryPrefix(in, prefixSize) {
+			return prefixSize
+		}
+	}
+}
 
-			if len(newName) < 5 {
-				name = newName
-				last = filepath.Base(m)
-			}
+func getPrefix(fn string, prefixSize int) string {
+	return strings.ToLower(filepath.Base(fn)[:prefixSize])
+}
+
+func tryPrefix(in []string, prefixSize int) bool {
+	seen := make(map[string]int)
+
+	for _, fn := range in {
+		prefix := getPrefix(fn, prefixSize)
+		seen[prefix]++
+
+		if seen[prefix] > size {
+			return false
 		}
 	}
 
-	// Recurse?
-	if len(groups) > 100 {
-		keys := maps.Keys(groups)
+	return true
+}
 
-		topGroups := makeGroups(keys)
+func getCategory(fn string) byte {
+	c := strings.ToLower(filepath.Base(fn))[0]
 
-		newGroups := make(map[string][]string)
+	if c >= 'a' && c <= 'z' {
+		return c
+	}
 
-		for tg, gs := range topGroups {
-			for _, g := range gs {
-				newGroups[filepath.Join(tg, g)] = groups[g]
+	return '#'
+}
+
+func makeGroups(in []string, prefixSize int) [][]string {
+	remaining := in
+
+	groups := make([][]string, 0)
+
+	for len(remaining) > 0 {
+		if len(remaining) < size {
+			groups = append(groups, remaining)
+			remaining = []string{}
+		} else {
+			// Find the break point
+			var point int
+
+			for point = 1; point < len(remaining); point++ {
+				if getCategory(remaining[point-1]) != getCategory(remaining[point]) {
+					break
+				}
 			}
-		}
 
-		groups = newGroups
+			if point > size {
+				for point = size; point > 0; point-- {
+					if getPrefix(remaining[point-1], prefixSize) != getPrefix(remaining[point], prefixSize) {
+						break
+					}
+				}
+			}
+
+			groups = append(groups, remaining[:point])
+			remaining = remaining[point:]
+		}
 	}
 
 	return groups
 }
 
-func findPrefix(prev, next string) string {
-	minLen := int(math.Min(float64(len(prev)), float64(len(next))))
-
-	if minLen == 0 {
-		return next[:1]
-	}
-
-	for i := 0; i < int(math.Min(float64(len(prev)), float64(len(next)))); i++ {
-		a := prev[:i]
-		b := next[:i]
-
-		if a != b {
-			return b
-		}
-	}
-
-	return next
+func groupName(group []string, prefixSize int) string {
+	return fmt.Sprintf("%s-%s", getPrefix(group[0], prefixSize), getPrefix(group[len(group)-1], prefixSize))
 }
