@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"io/fs"
 	"slices"
 	"strings"
@@ -15,6 +16,8 @@ TODO:
 * Argument for source and dest
 * Argument for max size
 * Argument for glob
+* Argument for upper-case
+* Break into a-z folders if initial sort would make too many groups (recursive)
 */
 
 func usage() {
@@ -54,11 +57,31 @@ func main() {
 		for _, fn := range group {
 			dstFile := filepath.Join(dstDir, filepath.Base(fn))
 			fmt.Println(dstFile)
-			os.Link(fn, dstFile)
+
+			if err := copyFile(fn, dstFile); err != nil {
+				panic(err)
+			}
 		}
 	}
 
 	fmt.Println("done")
+}
+
+func copyFile(srcFn, dstFn string) error {
+	src, err := os.Open(srcFn)
+	if err != nil {
+		return err
+	}
+	defer src.Close()
+
+	dst, err := os.Create(dstFn)
+	if err != nil {
+		return err
+	}
+	defer dst.Close()
+
+	_, err = io.Copy(dst, src)
+	return err
 }
 
 func findFiles(dir string) ([]string, error) {
