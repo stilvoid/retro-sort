@@ -41,6 +41,9 @@ func (s sorter) execute() {
 
 	counter := 0
 	var div int = len(files) / 20
+	if div == 0 {
+		div = 1
+	}
 
 	for _, group := range groups {
 		for in, out := range group.fileMap() {
