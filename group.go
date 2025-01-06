@@ -9,6 +9,17 @@ import (
 	"path/filepath"
 )
 
+// Sort converts a list of paths to files into a mapping from source paths
+// to destination paths where no directory in the destinations
+// contains any more than size files
+func Sort(files []string, size int) map[string]string {
+	group := newGroup(files)
+
+	groups := group.sort(size)
+
+	return groups.fileMap()
+}
+
 func getPrefix(fn string, prefixSize int) string {
 	fn = strings.ToLower(filepath.Base(fn))
 
@@ -107,7 +118,7 @@ func (g group) name() string {
 
 // split returns g split into sub-groups using the specific prefixSize.
 // the second return value indicates whether the group was able to meet the size constraint
-func (g group) split(prefixSize, size int) ([]group, bool) {
+func (g group) split(prefixSize, size int) (groups, bool) {
 	success := true
 
 	counts := make(map[string]int)
@@ -128,7 +139,7 @@ func (g group) split(prefixSize, size int) ([]group, bool) {
 		}
 	}
 
-	groups := make([]group, 0)
+	groups := make(groups, 0)
 	cur := newGroup([]string{})
 	cur.prefixSize = prefixSize
 	cur.path = g.path
@@ -162,20 +173,20 @@ func (g group) split(prefixSize, size int) ([]group, bool) {
 	return groups, success
 }
 
-func (g group) sort(size int) []group {
+func (g group) sort(size int) groups {
 	if g.Len() <= size {
-		return []group{g}
+		return groups{g}
 	}
 
-	groups, _ := g.split(g.prefixSize+1, size)
+	gs, _ := g.split(g.prefixSize+1, size)
 
-	out := make([]group, 0)
+	out := make(groups, 0)
 
-	for _, sub := range groups {
+	for _, sub := range gs {
 		if sub.Len() <= size {
 			out = append(out, sub)
 		} else {
-			if len(groups) > 1 {
+			if len(gs) > 1 {
 				sub.path = filepath.Join(sub.path, sub.name())
 			}
 
@@ -199,6 +210,20 @@ func (g group) fileMap() map[string]string {
 
 	for _, file := range g.files {
 		out[file.name] = filepath.Join(g.path, g.name(), filepath.Base(file.name))
+	}
+
+	return out
+}
+
+type groups []group
+
+func (gs groups) fileMap() map[string]string {
+	out := make(map[string]string)
+
+	for _, g := range gs {
+		for src, dst := range g.fileMap() {
+			out[src] = dst
+		}
 	}
 
 	return out

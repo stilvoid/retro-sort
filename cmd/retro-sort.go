@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	retrosort "github.com/stilvoid/retro-sort"
+	"github.com/stilvoid/retrosort"
 )
 
 var src, dst string
@@ -13,6 +13,15 @@ var size int
 var pattern string
 var upperCase bool
 var printOnly bool
+var quiet bool
+
+func init() {
+	rootCmd.Flags().IntVarP(&size, "size", "s", 100, "Maximum number of directory entries")
+	rootCmd.Flags().StringVarP(&pattern, "glob", "g", "*", "Only include files matching this glob")
+	rootCmd.Flags().BoolVarP(&upperCase, "upper", "u", false, "Make upper-case directory names")
+	rootCmd.Flags().BoolVarP(&printOnly, "dry-run", "n", false, "Dry run. Print the file names and exit")
+	rootCmd.Flags().BoolVarP(&quiet, "quiet", "q", false, "Don't print anything, just do it")
+}
 
 var rootCmd = &cobra.Command{
 	Use:   "retro-sort [src] [dst]",
@@ -22,15 +31,31 @@ var rootCmd = &cobra.Command{
 		src = args[0]
 		dst = args[1]
 
-		retrosort.Execute(src, dst, size, pattern, upperCase, printOnly)
-	},
-}
+		files, err := retrosort.FindFiles(src, pattern)
+		if err != nil {
+			panic(err)
+		}
 
-func init() {
-	rootCmd.Flags().IntVarP(&size, "size", "s", 100, "Maximum number of directory entries")
-	rootCmd.Flags().StringVarP(&pattern, "glob", "g", "*", "Only include files matching this glob")
-	rootCmd.Flags().BoolVarP(&upperCase, "upper", "u", false, "Make upper-case directory names")
-	rootCmd.Flags().BoolVarP(&printOnly, "dry-run", "n", false, "Dry run. Print the file names and exit")
+		if !quiet {
+			fmt.Printf("Found %d files\n", len(files))
+		}
+
+		fileMap := retrosort.Sort(files, size)
+
+		if printOnly {
+			for src, dst := range fileMap {
+				fmt.Printf("%s\t->\t%s\n", src, dst)
+			}
+		} else {
+			if err := retrosort.CopyFiles(dst, fileMap, upperCase, false); err != nil {
+				panic(err)
+			}
+		}
+
+		if !quiet {
+			fmt.Println("done")
+		}
+	},
 }
 
 func main() {

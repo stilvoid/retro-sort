@@ -227,3 +227,18 @@ func TestGroupSortRecurse(t *testing.T) {
 		t.Error(d)
 	}
 }
+
+func TestGroups(t *testing.T) {
+	g := getTestGroup()
+
+	groups := g.sort(2)
+
+	if d := cmp.Diff(map[string]string{
+		"/another/path/2nd.file":       "#/2nd.file",
+		"/somewhere/a 4th file":        "a/a 4th file",
+		"/does/not/matter/and a third": "a/and a third",
+		"/some/path/first":             "f/first",
+	}, groups.fileMap()); d != "" {
+		t.Error(d)
+	}
+}
