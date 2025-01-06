@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"maps"
 	"os"
+	"slices"
 
 	"github.com/spf13/cobra"
 	"github.com/stilvoid/retrosort"
@@ -36,15 +38,18 @@ var rootCmd = &cobra.Command{
 			panic(err)
 		}
 
-		if !quiet {
+		if !quiet && !printOnly {
 			fmt.Printf("Found %d files\n", len(files))
 		}
 
 		fileMap := retrosort.Sort(files, size)
 
 		if printOnly {
-			for src, dst := range fileMap {
-				fmt.Printf("%s\t->\t%s\n", src, dst)
+			// Guarantee order
+			sources := slices.Collect(maps.Keys(fileMap))
+			slices.Sort(sources)
+			for _, src := range sources {
+				fmt.Printf("%s\t->\t%s\n", src, fileMap[src])
 			}
 		} else {
 			if err := retrosort.CopyFiles(dst, fileMap, upperCase, false); err != nil {
@@ -52,7 +57,7 @@ var rootCmd = &cobra.Command{
 			}
 		}
 
-		if !quiet {
+		if !quiet && !printOnly {
 			fmt.Println("done")
 		}
 	},
