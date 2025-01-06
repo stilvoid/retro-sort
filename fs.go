@@ -23,7 +23,7 @@ func FindFiles(dir, pattern string) ([]string, error) {
 	files := make([]string, 0)
 
 	err = filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
-		if !d.IsDir() {
+		if err == nil && !d.IsDir() {
 			if pattern != "*" && !g.Match(strings.ToLower(filepath.Base(path))) {
 				return err
 			}

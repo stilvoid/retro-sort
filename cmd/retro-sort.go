@@ -33,9 +33,16 @@ var rootCmd = &cobra.Command{
 		src = args[0]
 		dst = args[1]
 
+		// Exit if dst exists
+		if _, err := os.Stat(dst); !os.IsNotExist(err) {
+			fmt.Fprintln(os.Stderr, "You must specify a destination folder that does not exist yet")
+			os.Exit(1)
+		}
+
 		files, err := retrosort.FindFiles(src, pattern)
 		if err != nil {
-			panic(err)
+			fmt.Fprintf(os.Stderr, "Error finding files: %s\n", err)
+			os.Exit(1)
 		}
 
 		if !quiet && !printOnly {
@@ -53,8 +60,10 @@ var rootCmd = &cobra.Command{
 			}
 		} else {
 			if err := retrosort.CopyFiles(dst, fileMap, upperCase, false); err != nil {
-				panic(err)
+				fmt.Fprintf(os.Stderr, "Error copying files: %s", err)
+				os.Exit(1)
 			}
+			fmt.Println()
 		}
 
 		if !quiet && !printOnly {
