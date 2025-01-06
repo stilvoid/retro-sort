@@ -48,12 +48,12 @@ func newFile(fn string) file {
 }
 
 func (f file) prefix(size int) string {
-	if size >= len(f.sortName) {
-		return f.sortName
-	}
-
 	if size == 1 {
 		return getCategory(f.sortName[:size])
+	}
+
+	if size >= len(f.sortName) {
+		return f.sortName
 	}
 
 	return f.sortName[:size]
@@ -86,6 +86,10 @@ func (g group) Len() int {
 }
 
 func (g group) name() string {
+	if g.prefixSize == 0 {
+		return ""
+	}
+
 	a := g.files[0].prefix(g.prefixSize)
 	b := g.files[g.Len()-1].prefix(g.prefixSize)
 
@@ -159,6 +163,10 @@ func (g group) split(prefixSize, size int) ([]group, bool) {
 }
 
 func (g group) sort(size int) []group {
+	if g.Len() <= size {
+		return []group{g}
+	}
+
 	groups, _ := g.split(g.prefixSize+1, size)
 
 	out := make([]group, 0)
@@ -181,7 +189,9 @@ func (g group) sort(size int) []group {
 }
 
 func (g group) String() string {
-	return fmt.Sprintf("%s / %s\t%d\t%d", g.path, g.name(), g.Len(), g.prefixSize)
+	path := filepath.Join(g.path, g.name())
+
+	return fmt.Sprintf("%s: %d", path, g.Len())
 }
 
 func (g group) fileMap() map[string]string {
