@@ -33,12 +33,13 @@ For aesthetic reasons, you can specify `--upper` to have `retro-sort` create all
 To give you an idea, here's a silly and trivial example. Imagine you have a folder of disk images that looks like this:
 
 ```
-disks/aargh.disk
-disks/addams_family.disk
-disks/chaos_engine.disk
-disks/elite.disk
-disks/elite_ii.disk
-disks/exolon.disk
+disks/
+    aargh.disk
+    addams_family.disk
+    chaos_engine.disk
+    elite.disk
+    elite_ii.disk
+    exolon.disk
 ```
 
 And you are working with some retro hardware that simply can't cope if a folder contains any more than 2 files.
@@ -46,22 +47,32 @@ And you are working with some retro hardware that simply can't cope if a folder 
 If you run `retro-sort -s 2 disks out`, then `retro-sort` will create the following directory structure:
 
 ```
-disks/a/aargh.disk
-disks/a/addams_family.disk
-disks/c/chaos_engine.disk
-disks/e/el/elite.disk
-disks/e/el/elite_ii.disk
-disks/e/ex/exolon.disk
+dists/
+    a/
+        aargh.disk
+        addams_family.disk
+    c/
+        chaos_engine.disk
+    e/
+        el/
+            elite.disk
+            elite_ii.disk
+        ex/
+            exolon.disk
 ```
 
 If you picked a more generous size, `retro-sort` would make different decisions and consolidate where possible:
 
+e.g. `retro-sort -s 4 disks out` would create this structure:
+
 ```
-> retro-sort -s 4 disks out
-disks/a-c/aargh.disk
-disks/a-c/addams_family.disk
-disks/a-c/chaos_engine.disk
-disks/e/elite.disk
-disks/e/elite_ii.disk
-disks/e/exolon.disk
+dists/
+    a-c/
+        aargh.disk
+        addams_family.disk
+        chaos_engine.disk
+    e/
+        elite.disk
+        elite_ii.disk
+        exolon.disk
 ```
