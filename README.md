@@ -16,6 +16,7 @@ retro-sort [src] [dst] [flags]
   -h, --help          help for retro-sort
   -q, --quiet         Don't print anything, just do it
   -s, --size int      Maximum number of directory entries (default 100)
+      --tosec         Experimental: Detect TOSEC filenames and group related files
   -u, --upper         Make upper-case directory names
 ```
 
@@ -76,3 +77,12 @@ dists/
         elite_ii.disk
         exolon.disk
 ```
+
+## Tosec compatability
+
+`retro-sort` includes a `--tosec` flag that, if enabled, will check if file names match the [TOSEC naming convention](https://www.tosecdev.org/tosec-naming-convention)
+and if so, group files related to a title into the same folder. This can save a lot of space in directories that
+would otherwise contain a lot of files starting with the same letter (for example, there are hundreds of variations
+of Jet Set Willy for the Spectrum).
+
+This flag is experimental for now but will likely become default before v1.0.

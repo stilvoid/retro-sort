@@ -2,6 +2,7 @@ package retrosort
 
 import (
 	"fmt"
+	"maps"
 	"regexp"
 	"slices"
 	"strings"
@@ -48,6 +49,10 @@ type file struct {
 var sortNameRe = regexp.MustCompile(`[^a-z0-9]+`)
 
 func newFile(fn string) file {
+	if TosecMode {
+		fn = doTosec(fn)
+	}
+
 	sortName := filepath.Base(fn)
 	sortName = strings.ToLower(sortName)
 	sortName = sortNameRe.ReplaceAllString(sortName, "_")
@@ -77,10 +82,13 @@ type group struct {
 }
 
 func newGroup(names []string) group {
-	files := make([]file, len(names))
-	for i, name := range names {
-		files[i] = newFile(name)
+	dedupFiles := make(map[string]file)
+	for _, name := range names {
+		f := newFile(name)
+		dedupFiles[f.name] = f
 	}
+
+	files := slices.Collect(maps.Values(dedupFiles))
 
 	slices.SortStableFunc(files, func(a, b file) int {
 		return strings.Compare(a.sortName, b.sortName)
@@ -222,7 +230,13 @@ func (gs groups) fileMap() map[string]string {
 
 	for _, g := range gs {
 		for src, dst := range g.fileMap() {
-			out[src] = dst
+			if fileNames, ok := tosecFiles[src]; TosecMode && ok {
+				for _, fn := range fileNames {
+					out[fn] = filepath.Join(dst, filepath.Base(fn))
+				}
+			} else {
+				out[src] = dst
+			}
 		}
 	}
 

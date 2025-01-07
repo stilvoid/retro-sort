@@ -16,6 +16,7 @@ var pattern string
 var upperCase bool
 var printOnly bool
 var quiet bool
+var tosec bool
 
 func init() {
 	rootCmd.Flags().IntVarP(&size, "size", "s", 100, "Maximum number of directory entries")
@@ -23,6 +24,7 @@ func init() {
 	rootCmd.Flags().BoolVarP(&upperCase, "upper", "u", false, "Make upper-case directory names")
 	rootCmd.Flags().BoolVarP(&printOnly, "dry-run", "n", false, "Dry run. Print the file names and exit")
 	rootCmd.Flags().BoolVarP(&quiet, "quiet", "q", false, "Don't print anything, just do it")
+	rootCmd.Flags().BoolVar(&tosec, "tosec", false, "Experimental: Detect TOSEC filenames and group related files")
 }
 
 var rootCmd = &cobra.Command{
@@ -34,7 +36,7 @@ var rootCmd = &cobra.Command{
 		dst = args[1]
 
 		// Exit if dst exists
-		if _, err := os.Stat(dst); !os.IsNotExist(err) {
+		if _, err := os.Stat(dst); !printOnly && !os.IsNotExist(err) {
 			fmt.Fprintln(os.Stderr, "You must specify a destination folder that does not exist yet")
 			os.Exit(1)
 		}
@@ -49,7 +51,15 @@ var rootCmd = &cobra.Command{
 			fmt.Printf("Found %d files\n", len(files))
 		}
 
+		retrosort.TosecMode = tosec
+
 		fileMap := retrosort.Sort(files, size)
+
+		if len(files) != len(fileMap) {
+			fmt.Fprintln(os.Stderr, "Duplicate filenames detected. This operation will result in files missing.")
+			// TODO: Print dupes
+			os.Exit(1)
+		}
 
 		if printOnly {
 			// Guarantee order
