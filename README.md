@@ -2,6 +2,22 @@
 
 `retro-sort` sorts your files into a folder structure suitable for use with retro hardware
 
+## Installing
+
+Use [homebrew](https://brew.sh/):
+
+`brew install stilvoid/tools/retro-sort`
+
+OR
+
+Download a binary for your OS from the [releases](https://github.com/stilvoid/retro-sort/releases) page.
+
+OR
+
+Build `retro-sort` with [go](https://go.dev/):
+
+`go install github.com/stilvoid/retro-sort/cmd/retro-sort@latest`
+
 ## Usage
 
 ```
