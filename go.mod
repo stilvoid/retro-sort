@@ -1,4 +1,4 @@
-module github.com/stilvoid/retrosort
+module github.com/stilvoid/retro-sort
 
 go 1.19
 

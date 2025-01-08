@@ -2,8 +2,6 @@ package retrosort
 
 import (
 	"fmt"
-	"maps"
-	"regexp"
 	"slices"
 	"strings"
 
@@ -13,95 +11,53 @@ import (
 // Sort converts a list of paths to files into a mapping from source paths
 // to destination paths where no directory in the destinations
 // contains any more than size files
-func Sort(files []string, size int) map[string]string {
-	group := newGroup(files)
+func Sort(sources []string, size int) map[string]string {
+	group := newGroup(sources)
 
 	groups := group.sort(size)
 
 	return groups.fileMap()
 }
 
-func getPrefix(fn string, prefixSize int) string {
-	fn = strings.ToLower(filepath.Base(fn))
-
-	if len(fn) < prefixSize {
-		return fn
-	}
-
-	return fn[:prefixSize]
-}
-
-func getCategory(fn string) string {
-	c := strings.ToLower(filepath.Base(fn))[0]
-
-	if c >= 'a' && c <= 'z' {
-		return string(c)
-	}
-
-	return "#"
-}
-
-type file struct {
-	name     string
-	sortName string
-}
-
-var sortNameRe = regexp.MustCompile(`[^a-z0-9]+`)
-
-func newFile(fn string) file {
-	if TosecMode {
-		fn = doTosec(fn)
-	}
-
-	sortName := filepath.Base(fn)
-	sortName = strings.ToLower(sortName)
-	sortName = sortNameRe.ReplaceAllString(sortName, "_")
-
-	return file{
-		name:     fn,
-		sortName: sortName,
-	}
-}
-
-func (f file) prefix(size int) string {
-	if size == 1 {
-		return getCategory(f.sortName[:size])
-	}
-
-	if size >= len(f.sortName) {
-		return f.sortName
-	}
-
-	return f.sortName[:size]
-}
-
 type group struct {
-	files      []file
+	entries    []entry
 	prefixSize int
 	path       string
 }
 
-func newGroup(names []string) group {
-	dedupFiles := make(map[string]file)
-	for _, name := range names {
-		f := newFile(name)
-		dedupFiles[f.name] = f
+func newGroup(sources []string) group {
+	groupedSources := make(map[string][]string)
+	for _, fn := range sources {
+		name := filepath.Base(fn)
+
+		if TosecMode {
+			name = tosecName(name)
+		}
+
+		if _, ok := groupedSources[name]; !ok {
+			groupedSources[name] = make([]string, 0)
+		}
+
+		groupedSources[name] = append(groupedSources[name], fn)
 	}
 
-	files := slices.Collect(maps.Values(dedupFiles))
+	entries := make([]entry, 0)
+	for name, sources := range groupedSources {
+		entries = append(entries, newEntry(name, sources))
+	}
 
-	slices.SortStableFunc(files, func(a, b file) int {
+	slices.SortStableFunc(entries, func(a, b entry) int {
 		return strings.Compare(a.sortName, b.sortName)
 	})
 
 	return group{
-		files:      files,
+		entries:    entries,
 		prefixSize: 0,
 	}
 }
 
 func (g group) Len() int {
-	return len(g.files)
+	return len(g.entries)
 }
 
 func (g group) name() string {
@@ -109,8 +65,8 @@ func (g group) name() string {
 		return ""
 	}
 
-	a := g.files[0].prefix(g.prefixSize)
-	b := g.files[g.Len()-1].prefix(g.prefixSize)
+	a := g.entries[0].prefix(g.prefixSize)
+	b := g.entries[g.Len()-1].prefix(g.prefixSize)
 
 	if g.prefixSize == 1 {
 		a = getCategory(a)
@@ -133,8 +89,8 @@ func (g group) split(prefixSize, size int) (groups, bool) {
 	prefixes := make([]string, 0)
 
 	// Fail if any individual prefix is too big
-	for _, file := range g.files {
-		prefix := file.prefix(prefixSize)
+	for _, entry := range g.entries {
+		prefix := entry.prefix(prefixSize)
 
 		if counts[prefix] == 0 {
 			prefixes = append(prefixes, prefix)
@@ -157,7 +113,7 @@ func (g group) split(prefixSize, size int) (groups, bool) {
 	for i, prefix := range prefixes {
 		// Copy
 		for j := 0; j < counts[prefix]; j++ {
-			cur.files = append(cur.files, g.files[pos])
+			cur.entries = append(cur.entries, g.entries[pos])
 			pos++
 		}
 
@@ -170,7 +126,7 @@ func (g group) split(prefixSize, size int) (groups, bool) {
 		}
 	}
 
-	if len(cur.files) > 0 {
+	if len(cur.entries) > 0 {
 		groups = append(groups, cur)
 	}
 
@@ -216,8 +172,10 @@ func (g group) String() string {
 func (g group) fileMap() map[string]string {
 	out := make(map[string]string)
 
-	for _, file := range g.files {
-		out[file.name] = filepath.Join(g.path, g.name(), filepath.Base(file.name))
+	for _, entry := range g.entries {
+		for src, dst := range entry.fileMap() {
+			out[src] = filepath.Join(g.path, g.name(), dst)
+		}
 	}
 
 	return out
@@ -230,13 +188,7 @@ func (gs groups) fileMap() map[string]string {
 
 	for _, g := range gs {
 		for src, dst := range g.fileMap() {
-			if fileNames, ok := tosecFiles[src]; TosecMode && ok {
-				for _, fn := range fileNames {
-					out[fn] = filepath.Join(dst, filepath.Base(fn))
-				}
-			} else {
-				out[src] = dst
-			}
+			out[src] = dst
 		}
 	}
 

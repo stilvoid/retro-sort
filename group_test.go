@@ -6,52 +6,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-func TestFilePrefixLong(t *testing.T) {
-	f := newFile("/some/path/a file name.foo")
-
-	if d := cmp.Diff("a_file_name_foo", f.prefix(15)); d != "" {
-		t.Error(d)
-	}
-
-	if d := cmp.Diff("a_file_name_foo", f.prefix(16)); d != "" {
-		t.Error(d)
-	}
-}
-
-func TestFilePrefixSingle(t *testing.T) {
-	fs := []file{
-		newFile("/some/path/123"),
-		newFile("/some/path/.-#"),
-		newFile("/some/path/ _%3"),
-	}
-
-	for _, f := range fs {
-		if d := cmp.Diff("#", f.prefix(1)); d != "" {
-			t.Error(f, d)
-		}
-	}
-}
-
-func TestFilePrefixVarious(t *testing.T) {
-	f := newFile("/some/path/my great(-)file.yes")
-
-	testCases := []struct {
-		expected string
-		size     int
-	}{
-		{"m", 1},
-		{"my_great", 8},
-		{"my_great_file", 13},
-	}
-
-	for _, c := range testCases {
-
-		if d := cmp.Diff(c.expected, f.prefix(c.size)); d != "" {
-			t.Error(d)
-		}
-	}
-}
-
 func getTestGroup() group {
 	return newGroup([]string{
 		"/some/path/first",

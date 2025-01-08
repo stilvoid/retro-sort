@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"maps"
 	"os"
+	"runtime/debug"
 	"slices"
 
 	"github.com/spf13/cobra"
-	"github.com/stilvoid/retrosort"
+	retrosort "github.com/stilvoid/retro-sort"
 )
 
 var src, dst string
@@ -25,6 +26,10 @@ func init() {
 	rootCmd.Flags().BoolVarP(&printOnly, "dry-run", "n", false, "Dry run. Print the file names and exit")
 	rootCmd.Flags().BoolVarP(&quiet, "quiet", "q", false, "Don't print anything, just do it")
 	rootCmd.Flags().BoolVar(&tosec, "tosec", false, "Experimental: Detect TOSEC filenames and group related files")
+
+	if b, ok := debug.ReadBuildInfo(); ok {
+		rootCmd.Version = b.Main.Version
+	}
 }
 
 var rootCmd = &cobra.Command{
