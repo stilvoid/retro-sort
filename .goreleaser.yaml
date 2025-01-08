@@ -3,9 +3,10 @@ version: 2
 before:
   hooks:
     - go mod tidy
+    - go test
 
 builds:
-  - main: ./cmd/retro-sort.go
+  - main: ./cmd/retro-sort/main.go
     binary: retro-sort
     env:
       - CGO_ENABLED=0
@@ -15,19 +16,18 @@ builds:
       - darwin
 
 archives:
-  - format: tar.gz
-    # this name template makes the OS and Arch compatible with the results of `uname`.
+  - format: zip
     name_template: >-
       {{ .ProjectName }}_
-      {{- title .Os }}_
+      {{- if eq .Os "darwin" }}MacOS
+      {{- else}}{{- title .Os }}{{ end }}_
       {{- if eq .Arch "amd64" }}x86_64
       {{- else if eq .Arch "386" }}i386
       {{- else }}{{ .Arch }}{{ end }}
       {{- if .Arm }}v{{ .Arm }}{{ end }}
-    # use zip for windows archives
-    format_overrides:
-      - goos: windows
-        format: zip
+    files:
+      - LICENSE
+      - README.md
 
 changelog:
   sort: asc
@@ -35,10 +35,3 @@ changelog:
     exclude:
       - "^docs:"
       - "^test:"
-
-release:
-  footer: >-
-
-    ---
-
-    Released by [GoReleaser](https://github.com/goreleaser/goreleaser).

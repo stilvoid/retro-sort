@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"maps"
 	"os"
-	"runtime/debug"
 	"slices"
 
 	"github.com/spf13/cobra"
@@ -18,6 +17,7 @@ var upperCase bool
 var printOnly bool
 var quiet bool
 var tosec bool
+var version = "git"
 
 func init() {
 	rootCmd.Flags().IntVarP(&size, "size", "s", 100, "Maximum number of directory entries")
@@ -27,9 +27,7 @@ func init() {
 	rootCmd.Flags().BoolVarP(&quiet, "quiet", "q", false, "Don't print anything, just do it")
 	rootCmd.Flags().BoolVar(&tosec, "tosec", false, "Experimental: Detect TOSEC filenames and group related files")
 
-	if b, ok := debug.ReadBuildInfo(); ok {
-		rootCmd.Version = b.Main.Version
-	}
+	rootCmd.Version = version
 }
 
 var rootCmd = &cobra.Command{
