@@ -135,14 +135,14 @@ func TestGroupSortBasic(t *testing.T) {
 	}
 
 	if d := cmp.Diff(map[string]string{
-		"/does/not/matter/and a third": "a/and a third",
-		"/somewhere/a 4th file":        "a/a 4th file",
+		"/does/not/matter/and a third": "a-f/a/and a third",
+		"/somewhere/a 4th file":        "a-f/a/a 4th file",
 	}, groups[1].fileMap()); d != "" {
 		t.Error(d)
 	}
 
 	if d := cmp.Diff(map[string]string{
-		"/some/path/first": "f/first",
+		"/some/path/first": "a-f/f/first",
 	}, groups[2].fileMap()); d != "" {
 		t.Error(d)
 	}
@@ -189,9 +189,9 @@ func TestGroups(t *testing.T) {
 
 	if d := cmp.Diff(map[string]string{
 		"/another/path/2nd.file":       "#/2nd.file",
-		"/somewhere/a 4th file":        "a/a 4th file",
-		"/does/not/matter/and a third": "a/and a third",
-		"/some/path/first":             "f/first",
+		"/somewhere/a 4th file":        "a-f/a/a 4th file",
+		"/does/not/matter/and a third": "a-f/a/and a third",
+		"/some/path/first":             "a-f/f/first",
 	}, groups.fileMap()); d != "" {
 		t.Error(d)
 	}
