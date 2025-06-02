@@ -1,10 +1,11 @@
 module github.com/stilvoid/retro-sort
 
 go 1.19
+toolchain go1.24.1
 
 require (
 	github.com/gobwas/glob v0.2.3
-	github.com/google/go-cmp v0.6.0
+	github.com/google/go-cmp v0.7.0
 	github.com/spf13/cobra v1.8.1
 )
 
